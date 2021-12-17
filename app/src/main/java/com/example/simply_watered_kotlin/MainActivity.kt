@@ -1,58 +1,67 @@
 package com.example.simply_watered_kotlin
 
-import android.os.Bundle
-import com.google.android.material.snackbar.Snackbar
+import android.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
-import androidx.navigation.findNavController
-import androidx.navigation.ui.AppBarConfiguration
-import androidx.navigation.ui.navigateUp
-import androidx.navigation.ui.setupActionBarWithNavController
-import android.view.Menu
-import android.view.MenuItem
-import com.example.simply_watered_kotlin.databinding.ActivityMainBinding
+import android.os.Bundle
+import androidx.recyclerview.widget.LinearLayoutManager
+import com.example.simply_watered_kotlin.Adapter.MyMovieAdapter
+import com.example.simply_watered_kotlin.Interface.ApiInterface
+import com.example.simply_watered_kotlin.Model.RegionGroup
+import com.example.simply_watered_kotlin.R
+import com.example.simply_watered_kotlin.SslCertificate.NetworkHandler
+
+
+import dmax.dialog.SpotsDialog
+import kotlinx.android.synthetic.main.activity_main.*
+import retrofit2.Call
+import retrofit2.Callback
+import retrofit2.Response
+
+
+
+
 
 class MainActivity : AppCompatActivity() {
 
-    private lateinit var appBarConfiguration: AppBarConfiguration
-    private lateinit var binding: ActivityMainBinding
+    lateinit var mService: ApiInterface
+    lateinit var layoutManager: LinearLayoutManager
+    lateinit var adapter: MyMovieAdapter
+    lateinit var dialog: AlertDialog
+
+
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_main)
 
-        binding = ActivityMainBinding.inflate(layoutInflater)
-        setContentView(binding.root)
+//        mService = Common.retrofitService
+        mService= NetworkHandler.getRetrofit().create(ApiInterface::class.java)
 
-        setSupportActionBar(binding.toolbar)
+        recyclerMovieList.setHasFixedSize(true)
+        layoutManager = LinearLayoutManager(this)
+        recyclerMovieList.layoutManager = layoutManager
+        dialog = SpotsDialog.Builder().setCancelable(true).setContext(this).build()
 
-        val navController = findNavController(R.id.nav_host_fragment_content_main)
-        appBarConfiguration = AppBarConfiguration(navController.graph)
-        setupActionBarWithNavController(navController, appBarConfiguration)
-
-        binding.fab.setOnClickListener { view ->
-            Snackbar.make(view, "Replace with your own action", Snackbar.LENGTH_LONG)
-                .setAction("Action", null).show()
-        }
+        getAllMovieList()
     }
 
-    override fun onCreateOptionsMenu(menu: Menu): Boolean {
-        // Inflate the menu; this adds items to the action bar if it is present.
-        menuInflater.inflate(R.menu.menu_main, menu)
-        return true
-    }
+    private fun getAllMovieList() {
+        dialog.show()
 
-    override fun onOptionsItemSelected(item: MenuItem): Boolean {
-        // Handle action bar item clicks here. The action bar will
-        // automatically handle clicks on the Home/Up button, so long
-        // as you specify a parent activity in AndroidManifest.xml.
-        return when (item.itemId) {
-            R.id.action_settings -> true
-            else -> super.onOptionsItemSelected(item)
-        }
-    }
 
-    override fun onSupportNavigateUp(): Boolean {
-        val navController = findNavController(R.id.nav_host_fragment_content_main)
-        return navController.navigateUp(appBarConfiguration)
-                || super.onSupportNavigateUp()
+
+        mService.getMovieList().enqueue(object : Callback<MutableList<RegionGroup>> {
+            override fun onFailure(call: Call<MutableList<RegionGroup>>, t: Throwable) {
+                dialog.dismiss()
+            }
+
+            override fun onResponse(call: Call<MutableList<RegionGroup>>, response: Response<MutableList<RegionGroup>>) {
+                adapter = MyMovieAdapter(baseContext, response.body() as MutableList<RegionGroup>)
+                adapter.notifyDataSetChanged()
+                recyclerMovieList.adapter = adapter
+
+                dialog.dismiss()
+            }
+        })
     }
 }
